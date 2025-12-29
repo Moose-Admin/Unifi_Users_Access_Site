@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Control Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="container mt-5">
+    <div id="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+    <div id="feedback-messages" style="display: none;"></div>
+    <h1 class="text-center">Access Control Portal</h1>
+    <div id="auth-container" class="card p-4">
+        <p>Enter your email to get a verification code:</p>
+        <p class="text-muted"><small>Note: You must already have an account with the system in order to login.</small></p>
+        <div class="input-group mb-3">
+            <input type="email" id="email" class="form-control" placeholder="Enter your email">
+            <button id="send-code" class="btn btn-primary">Send Code</button>
+        </div>
+    </div>
+    <div id="verify-container" class="card p-4" style="display: none;">
+        <p>Enter the code we sent to your email:</p>
+        <div class="input-group mb-3">
+            <input type="text" id="code" class="form-control" placeholder="Enter your code">
+            <button id="verify-code" class="btn btn-primary">Verify Code</button>
+        </div>
+    </div>
+    <div id="user-dashboard" class="card p-4" style="display: none;">
+        <div id="user-info-display" style="display: none;">
+            <h2 class="text-center">Welcome, <span id="user-name"></span></h2>
+        </div>
+        <div id="managed-users-container" class="mb-3">
+            <p>User Email: <span id="managed-user-email"></span></p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-3" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home-content" type="button" role="tab" aria-controls="home-content" aria-selected="true">Home</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="visitors-tab" data-bs-toggle="tab" data-bs-target="#visitors-content" type="button" role="tab" aria-controls="visitors-content" aria-selected="false">Visitors</button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="dashboardTabContent">
+            <!-- Home Tab -->
+            <div class="tab-pane fade show active" id="home-content" role="tabpanel" aria-labelledby="home-tab">
+                <div class="mb-3 d-flex gap-3" id="invite-buttons-container">
+                    <button id="send-invite-button" class="btn btn-primary flex-fill">Send New Invite<br>(Primary Site)</button>
+                    <button id="send-invite-site2-button" class="btn btn-primary flex-fill" style="display: none;">Send New Invite<br>(Secondary Site)</button>
+                </div>
+                <div id="pin-change-container" class="mb-3">
+                    <p>Update your PIN</p>
+                    <ul>
+                        <li>PIN must be 5-8 digits long.</li>
+                        <li>Cannot contain sequential numbers (e.g., 12345).</li>
+                        <li>Cannot have repetitive numbers (e.g., 11111).</li>
+                    </ul>
+                    <div class="input-group">
+                        <input type="password" id="new-pin" class="form-control" placeholder="Enter your new PIN">
+                        <button id="change-pin" class="btn btn-success">Change PIN</button>
+                    </div>
+                    <div id="pin-error" class="text-danger mt-2" style="display: none;"></div>
+                </div>
+                <div id="license-plates-container" class="mb-3">
+                    <h3>License Plates</h3>
+                    <div class="alert alert-info" role="alert">
+                        <small><strong>Important Note:</strong> Once you click Add Plate or Remove, it can take a couple of minutes for the change to reflect here, but the system is updated right away.</small>
+                    </div>
+
+                    <ul id="license-plates-list" class="list-group"></ul>
+                    <div class="input-group mt-3">
+                        <input type="text" id="new-plate" class="form-control" placeholder="Enter new license plate">
+                        <button id="add-plate" class="btn btn-success">Add Plate</button>
+                    </div>
+                    <div id="plate-error" class="text-danger mt-2" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Visitors Tab -->
+            <div class="tab-pane fade" id="visitors-content" role="tabpanel" aria-labelledby="visitors-tab">
+                <h3>Manage Visitors</h3>
+                <div class="alert alert-info" role="alert">
+                    <li>Here you can view all active visitors, add license plates to visitors, and delete individual plates from visitors.</li>
+                    <li>Changes take effect immediately, but might take a couple minutes to reflect here.</li>
+                    <li>Visitors are created in the UniFi Identity Application on your phone.</li>
+                    <li>Visitors that have expired more than 30 days ago are automatically deleted.</li>
+                </div>
+                
+                <div id="visitors-container">
+                    <div id="visitors-loading" class="text-center" style="display: none;">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <div id="visitors-list" class="table-responsive"></div>
+                    <div id="visitors-empty" class="alert alert-warning" role="alert" style="display: none;">
+                        No active visitors at this time.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button id="logout" class="btn btn-danger mt-3">Logout</button>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="script.js"></script>
+</body>
+</html>
