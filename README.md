@@ -3,186 +3,62 @@ This is a web portal for managing UniFi Access system with support for license p
 
 > **Note:** This is a non-production copy. Sensitive production-specific configurations have been removed for public sharing.
 
+## Table of Contents
+
+- [Requirements](#requirements)
+  - [Docker Containers](#docker-containers)
+  - [Environment Configuration](#environment-configuration)
+- [Installation & Setup Guide](#installation--setup-guide)
+  - [Prerequisites](#prerequisites)
+  - [Step-by-Step Installation](#step-by-step-installation)
+  - [Troubleshooting Installation](#troubleshooting-installation)
+- [Features](#features)
+- [How It Works](#how-it-works)
+  - [Application Flow](#application-flow)
+- [Core Components](#core-components)
+  - [Backend (Node.js/Express)](#backend-nodejs-express)
+  - [Frontend (HTML/CSS/JavaScript)](#frontend-htmlcssjavascript)
+  - [Shell Scripts](#shell-scripts)
+- [Validation Rules](#validation-rules)
+- [Environment Variables](#environment-variables)
+- [Script Execution Flow](#script-execution-flow)
+- [Multi-Site Support](#multi-site-support)
+  - [How Multi-Site Works](#how-multi-site-works)
+  - [What Happens at Each Site](#what-happens-at-each-site)
+  - [Site-Specific Features](#site-specific-features)
+  - [Example Scenarios](#example-scenarios)
+- [Converting to Single-Site Setup](#converting-to-single-site-setup)
+  - [Option 1: Clean Approach](#option-1-clean-approach-recommended)
+  - [Option 2: Keep Structure](#option-2-keep-structure-minimal-changes)
+  - [Code Changes](#code-changes-for-single-site-option-1)
+  - [Reverting to Multi-Site](#reverting-from-single-site-to-multi-site)
+- [Session Management](#session-management)
+
 ## Requirements
-
-### System Requirements
-
-#### Hardware
-- Minimum 512MB RAM for MongoDB
-- Minimum 1GB RAM for Node.js application
-- At least 1GB disk space
-- CPU: 1 Core minimum (2+ cores recommended)
-
-#### Software
-- Docker (version 20.10 or later)
-- Docker Compose (version 1.29 or later)
-- Git (for cloning the repository)
-- Terminal/Command line access
-
-### Prerequisites Before Installation
-
-#### UniFi Network Management Access
-- UniFi Network Management System (any recent version)
-- Administrator or API-enabled account
-- API must be enabled in UniFi settings
-- Network connectivity to UniFi management IP/hostname
-
-#### Email Server Access
-- SMTP email server (Gmail, Office 365, SendGrid, or self-hosted)
-- Email account credentials (username and password/app password)
-- SMTP port access (typically 587 for TLS or 25/465 for other configs)
-- For Gmail: App-specific password (not your main password)
-- For other providers: Ensure "Less secure app access" is enabled if applicable
-
-#### Network & Firewall
-- Port 3000 available (or mapped to different port)
-- Network access to UniFi management system (usually local network)
-- Outbound access to email server SMTP port
-- Firewall rules allowing Docker containers to communicate
 
 ### Docker Containers
 
-#### MongoDB Container
-
-**Purpose:**
-- Maintains persistent session state for authenticated users
-- Stores session tokens for continued access across container restarts
+#### MongoDB
+- Used to maintain session state for users
 - Required for user authentication and session persistence
 
-**Image:** `mongo:latest`
-
-**Storage:**
-- Stores data in Docker volume `mongo-data`
-- Data persists across container restarts
-- Recommended to backup this volume regularly for production use
-
-**Configuration:**
-- Database name: `web-portal`
-- Port: 27017 (internal to Docker network)
-- Network: `web-portal-network` (isolated Docker network)
-
-**Why MongoDB:**
-- NoSQL document database ideal for session storage
-- Built-in TTL (Time To Live) support for automatic session expiration
-- Scales well for small to medium deployments
-- Easy to backup and restore
-
-#### Node.js Container
-
-**Purpose:**
-- Runs the Express.js web application
-- Handles user authentication and dashboard
-- Executes shell scripts to interact with UniFi API
-- Manages user sessions and serves the web interface
-
-**Recommended Image:** `node:lts-alpine`
-- `lts` = Long-Term Support (stable version)
-- `alpine` = Minimal Linux distribution (~40MB vs 900MB standard)
-- Reduces container size and startup time
-- Sufficient for production use
-
-**Volume Mount:**
-- Local path: `./web-portal` (your project directory)
-- Container path: `/app`
-- Allows accessing local scripts and configuration files
-- All shell scripts must be in this directory
-
-**Port Mapping:**
-- Container: 3000 (default Node.js port)
-- Host: 3000 (or custom port of your choice)
-- Access via `http://localhost:3000` or `http://your-ip:3000`
-
-**Startup Command:**
-```sh
-sh -c "apk add --no-cache curl jq && cd /app && npm install && npm start"
-```
-
-This command does the following in order:
-1. **`apk add --no-cache curl jq`** - Install required utilities in Alpine Linux
-   - `curl` - Command-line tool for making API requests to UniFi
-   - `jq` - JSON query tool for parsing API responses
-   - `--no-cache` - Don't store package cache (saves space)
-
-2. **`cd /app`** - Navigate to the application directory
-
-3. **`npm install`** - Install Node.js dependencies listed in `package.json`
-   - Express.js - Web framework
-   - Nodemailer - Email sending
-   - express-session - Session management
-   - connect-mongo - MongoDB session store
-   - dotenv - Environment variable loading
-
-4. **`npm start`** - Start the application which:
-   - Loads environment variables from `.env`
-   - Fetches all users and license plates from UniFi API
-   - Caches them in memory for fast access
-   - Runs cleanup script to remove expired visitors (>30 days old)
-   - Starts the Express server listening on port 3000
-   - Begins 30-minute cache refresh intervals
+#### Node.js
+- **Recommended Image:** `node:lts-alpine`
+- **Volume Mount:** Map the `web-portal` folder as the container's data directory (`/app`)
+- **Post Argument:** 
+  ```sh
+  sh -c "apk add --no-cache curl jq && cd /app && npm install && npm start"
+  ```
+  This command will:
+  - Install `curl` and `jq` utilities
+  - Install Node.js dependencies
+  - Start the application
+  - Copy local site users with license plates and cache them in memory
+  - Remove any visitors that have expired more than 30 days ago
 
 ### Environment Configuration
-
-**Location:** Create a `.env` file in the `web-portal` root directory
-
-**Required Variables:**
-- `MONGO_URL` - MongoDB connection string
-- `UNIFA_API_URL` - Primary UniFi API endpoint
-- `UNIFA_BEARER_TOKEN` - Primary UniFi API authentication
-- `EMAIL_HOST` - SMTP server hostname
-- `EMAIL_PORT` - SMTP server port
-- `EMAIL_USER` - Email account for sending
-- `EMAIL_PASS` - Email account password or app password
-- `EMAIL_FROM` - Sender display name for emails
-
-**Optional Variables:**
-- `UNIFA_SITE2_API_URL` - Secondary site API (only if using multi-site)
-- `UNIFA_SITE2_BEARER_TOKEN` - Secondary site token (only if using multi-site)
-- `EMAIL_SECURE` - Use TLS/SSL (true/false)
-
-**Format Example:**
-```bash
-# These must be set before starting the application
-MONGO_URL=mongodb://mongodb:27017/web-portal
-UNIFA_API_URL=https://192.168.1.1:12445/api/v1/developer
-UNIFA_BEARER_TOKEN=your_actual_token_here
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_SECURE=false
-EMAIL_USER=yourname@gmail.com
-EMAIL_PASS=your_app_password
-EMAIL_FROM="MyPortal <noreply@myportal.com>"
-```
-
-**Notes:**
-- Do NOT include quotes around values in `.env` file
-- Keep `.env` file private (add to `.gitignore`)
-- Tokens and passwords must be exact - no spaces or special characters unless required
-- `.env` is loaded at application startup
-
-### Network Architecture
-
-```
-┌─────────────────────────────────────────┐
-│         Host Machine                    │
-│  Port 3000 (or custom port)             │
-└────────────────┬────────────────────────┘
-                 │
-         ┌───────▼────────┐
-         │  Docker Network│
-         │ web-portal     │
-         └───┬──────┬─────┘
-             │      │
-        ┌────▼─┐  ┌─▼────┐
-        │Node  │  │Mongo │
-        │:3000 │  │:27017│
-        └──────┘  └──────┘
-             │
-        ┌────▼─────────────┐
-        │  External API    │
-        │  UniFi System    │
-        │  SMTP Server     │
-        └──────────────────┘
-```
+- Create a `.env` file in the `web-portal` directory with all required environment variables
+- See `.env.example` (if available) for reference configuration
 
 ## Installation & Setup Guide
 
